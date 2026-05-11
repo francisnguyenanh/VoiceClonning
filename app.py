@@ -33,6 +33,10 @@ import time
 import uuid
 from pathlib import Path
 
+# Agree to Coqui non-commercial CPML license (https://coqui.ai/cpml)
+# This app is for personal/local use only.
+os.environ["COQUI_TOS_AGREED"] = "1"
+
 from flask import (
     Flask,
     Response,
@@ -71,7 +75,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = max(MAX_AUDIO_UPLOAD_MB, MAX_DOC_UPLOAD_MB) * 1024 * 1024
 
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*", max_http_buffer_size=2 * 1024 * 1024)
+socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*", max_http_buffer_size=2 * 1024 * 1024)
 
 
 # ---------------------------------------------------------------------------

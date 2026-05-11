@@ -61,9 +61,11 @@ class TTSEngine:
         with self._load_lock:
             if self._loaded:
                 return
+            import os
+            os.environ["COQUI_TOS_AGREED"] = "1"  # agree to non-commercial CPML
             logger.info("Loading TTS model: %s", TTS_MODEL_NAME)
             from TTS.api import TTS  # imported here to avoid slow startup
-            self._tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=True)
+            self._tts = TTS(model_name=TTS_MODEL_NAME, progress_bar=True, gpu=False)
             self._loaded = True
             logger.info("TTS model ready.")
 
