@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Voice Profiles{% endblock %}
+{% block breadcrumb %}Voice Profiles{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0">Voice Profiles</h4>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+    <i class="bi bi-plus-lg me-1"></i>Tạo Profile mới
+  </button>
+</div>
+
+<!-- Profile grid -->
+{% if profiles %}
+<div class="row g-3" id="profile-grid">
+  {% for p in profiles %}
+  <div class="col-sm-6 col-lg-4 col-xl-3" id="card-{{ p.id }}">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between mb-2">
+          <div>
+            <div class="fw-semibold">{{ p.name }}</div>
+            <span class="badge bg-secondary">{{ p.language }}</span>
+          </div>
+          <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteProfile('{{ p.id }}', '{{ p.name }}')">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+        <small class="text-muted d-block mb-3">{{ p.created_at }}</small>
+        <!-- Reference audio preview -->
+        <audio controls class="w-100" src="/api/profiles/{{ p.id }}/audio" preload="none"></audio>
+      </div>
+      <div class="card-footer bg-transparent border-0 d-flex gap-2 pb-3">
+        <a href="/tts?profile={{ p.id }}" class="btn btn-sm btn-outline-success flex-fill">
+          <i class="bi bi-file-earmark-text me-1"></i>TTS
+        </a>
+        <a href="/realtime?profile={{ p.id }}" class="btn btn-sm btn-outline-danger flex-fill">
+          <i class="bi bi-mic me-1"></i>Real-time
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted" id="empty-state">
+  <i class="bi bi-person-badge fs-1 d-block mb-3"></i>
+  <h5>Chưa có profile nào</h5>
+  <p>Nhấn <strong>Tạo Profile mới</strong> để bắt đầu.</p>
+</div>
+{% endif %}
+
+
+<!-- Create Profile Modal -->
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="create-form" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Tạo Voice Profile mới</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">
+            <i class="bi bi-info-circle me-1"></i>
+            Cần ít nhất <strong>30 giây</strong> audio giọng nói rõ ràng, tốt nhất là 1-3 phút.
+            Định dạng: WAV, MP3, OGG, FLAC, M4A.
+          </p>
+
+          <div class="mb-3">
+            <label class="form-label fw-medium">Tên Profile *</label>
+            <input type="text" class="form-control" name="name" id="profile-name"
+                   placeholder="Ví dụ: Giọng Nam Hà Nội" required maxlength="80" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-medium">Ngôn ngữ chính</label>
+            <select class="form-select" name="language" id="profile-language">
+              {% for lang in languages %}
+              <option value="{{ lang.code }}">{{ lang.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-medium">File audio tham chiếu *</label>
+            <input type="file" class="form-control" name="audio" id="profile-audio"
+                   accept=".wav,.mp3,.ogg,.flac,.m4a,.webm" required />
+            <div class="form-text">Tối đa 50 MB</div>
+          </div>
+
+          <!-- Preview selected audio -->
+          <audio id="audio-preview" controls class="w-100 d-none mt-2"></audio>
+
+          <!-- Progress -->
+          <div id="upload-progress" class="d-none mt-3">
+            <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
+            </div>
+            <small class="text-muted">Đang xử lý audio…</small>
+          </div>
+
+          <div id="upload-error" class="alert alert-danger mt-2 d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="create-btn">
+            <i class="bi bi-cloud-upload me-1"></i>Tạo Profile
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Xóa Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Bạn có chắc muốn xóa <strong id="delete-name"></strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-danger btn-sm" id="confirm-delete-btn">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+// Preview audio file before upload
+document.getElementById("profile-audio").addEventListener("change", function () {
+  const file = this.files[0];
+  const preview = document.getElementById("audio-preview");
+  if (file) {
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("d-none");
+  } else {
+    preview.classList.add("d-none");
+  }
+});
+
+// Create profile form submit
+document.getElementById("create-form").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const btn = document.getElementById("create-btn");
+  const errEl = document.getElementById("upload-error");
+  const progressEl = document.getElementById("upload-progress");
+  errEl.classList.add("d-none");
+
+  const formData = new FormData(this);
+  btn.disabled = true;
+  progressEl.classList.remove("d-none");
+
+  try {
+    const res = await fetch("/api/profiles", { method: "POST", body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Lỗi không xác định");
+
+    // Success — reload page to show new card
+    window.location.reload();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove("d-none");
+    btn.disabled = false;
+    progressEl.classList.add("d-none");
+  }
+});
+
+// Delete profile
+let _pendingDeleteId = null;
+const deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));
+
+function deleteProfile(id, name) {
+  _pendingDeleteId = id;
+  document.getElementById("delete-name").textContent = name;
+  deleteModal.show();
+}
+
+document.getElementById("confirm-delete-btn").addEventListener("click", async function () {
+  if (!_pendingDeleteId) return;
+  this.disabled = true;
+  try {
+    const res = await fetch(`/api/profiles/${_pendingDeleteId}`, { method: "DELETE" });
+    if (res.ok) {
+      document.getElementById(`card-${_pendingDeleteId}`)?.remove();
+      deleteModal.hide();
+    }
+  } catch {}
+  this.disabled = false;
+  _pendingDeleteId = null;
+});
+</script>
+{% endblock %}

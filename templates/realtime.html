@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Real-time Voice Conversion{% endblock %}
+{% block breadcrumb %}Real-time Voice Conversion{% endblock %}
+
+{% block content %}
+<h4 class="mb-2">Real-time Voice Conversion</h4>
+<p class="text-muted mb-4">
+  Nói vào micro → giọng sẽ được chuyển thành giọng của Voice Profile đã chọn.
+  <span class="badge bg-warning text-dark">CPU mode — latency ~0.5-2s</span>
+</p>
+
+{% if not profiles %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle me-2"></i>
+  Chưa có Voice Profile. <a href="/profiles">Tạo ngay</a>.
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Control panel -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label fw-medium">Voice Profile</label>
+          <select class="form-select" id="rt-sel-profile" {% if not profiles %}disabled{% endif %}>
+            <option value="">— Chọn profile —</option>
+            {% for p in profiles %}
+            <option value="{{ p.id }}"
+              {% if request.args.get('profile') == p.id %}selected{% endif %}>
+              {{ p.name }} ({{ p.language }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Status -->
+        <div class="mb-3">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <div id="status-dot" class="status-dot bg-secondary"></div>
+            <span id="status-text" class="small text-muted">Chờ kết nối…</span>
+          </div>
+          <div class="progress" style="height:4px">
+            <div id="latency-bar" class="progress-bar bg-info" style="width:0%"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">Latency</small>
+            <small class="text-muted" id="latency-label">— ms</small>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="d-flex gap-2">
+          <button class="btn btn-success flex-fill" id="btn-start" {% if not profiles %}disabled{% endif %}>
+            <i class="bi bi-mic-fill me-1"></i>Start
+          </button>
+          <button class="btn btn-danger flex-fill d-none" id="btn-stop">
+            <i class="bi bi-stop-fill me-1"></i>Stop
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input level meter -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <label class="form-label small fw-medium">Input Level (Mic)</label>
+        <div class="progress mb-2" style="height:18px">
+          <div id="input-level" class="progress-bar bg-success" style="width:0%"></div>
+        </div>
+        <label class="form-label small fw-medium">Output Level (Converted)</label>
+        <div class="progress" style="height:18px">
+          <div id="output-level" class="progress-bar bg-primary" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visualizer & log -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body p-2">
+        <canvas id="waveform-canvas" class="w-100" height="80"></canvas>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-terminal me-1"></i>Log</span>
+        <button class="btn btn-sm btn-link text-muted p-0" onclick="clearLog()">Xóa</button>
+      </div>
+      <div class="card-body p-2" style="height:200px; overflow-y:auto;" id="log-panel">
+        <small class="text-muted">Chờ bắt đầu…</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info notes -->
+<div class="alert alert-info mt-4 mb-0">
+  <i class="bi bi-lightbulb me-1"></i>
+  <strong>Lưu ý:</strong> Real-time voice conversion trên CPU có latency khoảng 0.5–2 giây.
+  Kết quả tốt nhất khi audio input rõ ràng, ít tiếng ồn nền.
+  Mô hình VC (FreeVC) cần được load trước — nhấn Start để kích hoạt.
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/js/realtime.js"></script>
+{% endblock %}

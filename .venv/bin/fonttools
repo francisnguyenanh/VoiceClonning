@@ -1,0 +1,8 @@
+#!/bin/sh
+'''exec' "/Users/eikitomobe/Documents/3. Học tập/Lập trình/VS code/VoiceClonning/.venv/bin/python3.11" "$0" "$@"
+' '''
+import sys
+from fontTools.__main__ import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
